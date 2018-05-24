@@ -19,28 +19,29 @@ model.compile(loss = losses.mean_absolute_error, optimizer=optimizers.Nadam())
 
 class GameData:
   def __init__(self, winner, turns):
+    if (winner not in [-1, 0, 1]):
+      raise ValueError('Error: parameter "winner" must have a value of -1, 0, or 1.  (Was ' + str(winner) + ')')
     self.winner = winner
     self.turns = turns
 
 def train(model, games):
   inputs = []
   expected = []
-  samples = random.sample(games, 10000)
+  samples = random.sample(games, 1000)
   print("Sampled ", len(samples), " games of ", len(games))
 
   print("Processing samples...")
   i=0
   for game in samples:
     i += 1
-    preceding_turn = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+    preceding_turn = np.array([0,0,0, 0,0,0, 0,0,0])
+
     for turn in game.turns:
       inputs.append(preceding_turn)
       delta = turn - preceding_turn
 
-      #print("game ", i, " turn ", turn, " preceding_turn ", preceding_turn, " delta ", delta)
-
       if game.winner == 1:
-        expected.append(delta)
+        expected.append(1 * delta)
       elif game.winner == -1:
         expected.append(-1 * delta)
       else:
@@ -48,8 +49,8 @@ def train(model, games):
 
       preceding_turn = turn
 
-  print("Training model...")
-  model.fit(np.array(inputs), np.array(expected), epochs=15, batch_size=64)
+  print("Training model...  len(inputs)=", len(inputs), "len(expected)=", len(expected))
+  model.fit(np.array(inputs), np.array(expected), epochs=10, batch_size=16)
 
 def importGameData():
   with open('all-games.data') as f:
@@ -60,7 +61,7 @@ def importGameData():
   games = []
 
   while len(content) > i:
-    outcome = convertLetterToNumber(content[i][:1])
+    outcome = int(content[i])
     line1 = content[i + 1]
     line2 = content[i + 2]
     line3 = content[i + 3]
@@ -170,14 +171,11 @@ def player1_first(player1, player2, board_state):
     board_state[int(move)] = player1
     draw(board_state)
     if check_for_winner(player1, player2, board_state) != None:
-      print("winner found")
       break
     else:
-      print("no winner")
       pass
-    print("ummmm....i'll take..")
     p_move = machine_move(player1, player2, board_state)
-    print(p_move)
+    print("player 2 took", p_move)
     board_state[int(p_move)] = player2
     draw(board_state)
   q = check_for_winner(player1, player2, board_state)

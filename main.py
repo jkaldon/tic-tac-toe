@@ -3,19 +3,16 @@ import numpy as np
 from keras import losses, optimizers
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.layers.advanced_activations import PReLU
+from keras.models import model_from_json
 import random
 
 np.random.seed(123)
-board_state = np.array([0,0,0, 0,0,0, 0,0,0])
+board_state = np.array([0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], dtype=np.float32)
 
 player1 = 1
 player2 = -1
 empty_spot = 0
-
-model = Sequential()
-model.add(Dense(8, activation='relu', input_dim=9))
-model.add(Dense(9, activation='relu'))
-model.compile(loss = losses.mean_absolute_error, optimizer=optimizers.Nadam())
 
 class GameData:
   def __init__(self, winner, turns):
@@ -24,33 +21,42 @@ class GameData:
     self.winner = winner
     self.turns = turns
 
-def train(model, games):
+def train(games):
   inputs = []
   expected = []
-  samples = random.sample(games, 1000)
+  samples = random.sample(games, 50000)
   print("Sampled ", len(samples), " games of ", len(games))
 
+  model = Sequential()
+  model.add(Dense(8, input_dim=9, activation='tanh'))
+  model.add(PReLU(weights=None, alpha_initializer="zero"))
+  model.add(Dense(9, activation='tanh'))
+  model.compile(loss = losses.mean_absolute_error, optimizer=optimizers.Nadam())
+
   print("Processing samples...")
-  i=0
   for game in samples:
-    i += 1
-    preceding_turn = np.array([0,0,0, 0,0,0, 0,0,0])
+    preceding_turn = np.array([0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], dtype=np.float32)
 
     for turn in game.turns:
-      inputs.append(preceding_turn)
       delta = turn - preceding_turn
 
-      if game.winner == 1:
-        expected.append(1 * delta)
-      elif game.winner == -1:
-        expected.append(-1 * delta)
-      else:
-        expected.append(0 * delta)
+      if any(i > 0 for i in delta):
+        # print(delta)
+        inputs.append(preceding_turn)
+
+        if game.winner == 1.0:
+          expected.append(10.0 * delta)
+        elif game.winner == -1:
+          expected.append(-1.0 * delta)
+        else:
+          expected.append(0.0 * delta)
 
       preceding_turn = turn
 
   print("Training model...  len(inputs)=", len(inputs), "len(expected)=", len(expected))
-  model.fit(np.array(inputs), np.array(expected), epochs=10, batch_size=16)
+  model.fit(np.array(inputs, dtype=np.float32), np.array(expected, dtype=np.float32), epochs=15, batch_size=64)
+
+  return model
 
 def importGameData():
   with open('all-games.data') as f:
@@ -67,7 +73,7 @@ def importGameData():
     line3 = content[i + 3]
     i+=4
 
-    if not i%60000:
+    if not i%100000:
       print('Line ', i, ' of ', len(content), ' read...')
 
     turns = parseTurns(line1, line2, line3)
@@ -96,13 +102,20 @@ def parseTurns(line1, line2, line3):
     s21 = convertLetterToNumber(turns_row_3[i][1:2])
     s22 = convertLetterToNumber(turns_row_3[i][1:3])
 
-    turns.append(np.array([s00, s01, s02, s10, s11, s12, s20, s21, s22]))
+    turns.append(np.array([s00, s01, s02, s10, s11, s12, s20, s21, s22], dtype=np.float32))
 
   return turns
 
 def neuralnet_move(player1, board_state):
-  results = model.predict(np.array([board_state]))
-  print("results = ", results)
+  results = model.predict(np.array([board_state], dtype=np.float32))
+  #print("board_state = ", board_state, "  results = ", results)
+
+  blank = getBlankSpotsArray(board_state)
+  for i in range(0, 9):
+    if i not in blank:
+      results[0, i] = np.finfo('float32').min
+  #print("after non-blanks removed: results = ", results)
+
   return np.argmax(results)
 
 def sign(player1, player2):
@@ -143,16 +156,16 @@ def draw(a):
 
 def convertLetterToNumber(l):
   if l in ('x','X'):
-    return 1
+    return 1.0
   elif l in ("o", "O"):
-    return -1
+    return -1.0
   else:
-    return 0
+    return 0.0
 
 def convertNumberToLetter(n):
-  if n == 1:
+  if n == 1.0:
     return "X"
-  elif n == -1:
+  elif n == -1.0:
     return "O"
   else:
     return " "
@@ -167,17 +180,17 @@ def player1_first(player1, player2, board_state):
   while check_for_winner(player1, player2, board_state) is None:
     #move = player1_move(player1, board_state)
     move = neuralnet_move(player1, board_state)
-    print("player 1 takes ", move)
+    #print("player 1 takes ", move)
     board_state[int(move)] = player1
-    draw(board_state)
+    #draw(board_state)
     if check_for_winner(player1, player2, board_state) != None:
       break
     else:
       pass
     p_move = machine_move(player1, player2, board_state)
-    print("player 2 took", p_move)
+    #print("player 2 took", p_move)
     board_state[int(p_move)] = player2
-    draw(board_state)
+    #draw(board_state)
   q = check_for_winner(player1, player2, board_state)
   if q == 1:
     congo_player1()
@@ -185,6 +198,8 @@ def player1_first(player1, player2, board_state):
     congo_player2()
   else:
     print("Its tie man...")
+
+  return q
 
 def player2_first(player1, player2, new):
   while not check_for_winner(player1, player2, new):
@@ -240,10 +255,7 @@ def player1_move(player1, board_state):
 
 def machine_move(player1, player2, board_state):
   #best = [4, 0, 2, 6, 8]
-  blank = []
-  for i in range(0,9):
-    if board_state[i] == empty_spot:
-        blank.append(i)
+  blank = getBlankSpotsArray(board_state)
 
   for i in blank:
     board_state[i] = player2
@@ -258,6 +270,13 @@ def machine_move(player1, player2, board_state):
     board_state[i] = empty_spot
 
   return int(blank[random.randrange(len(blank))])
+
+def getBlankSpotsArray(board_state):
+  blank = []
+  for i in range(0,9):
+    if board_state[i] == empty_spot:
+        blank.append(i)
+  return blank
 
 def display_instruction():
   print(chr(27) + "[2J")
@@ -280,6 +299,33 @@ def display_instruction():
   """)
 
 
+def loadModel():
+  json_file = open('model.json', 'r')
+  loaded_model_json = json_file.read()
+  json_file.close()
+  model = model_from_json(loaded_model_json)
+  # load weights into new model
+  model.load_weights("model.h5")
+  print("Loaded model from disk")
+  return model
+
+def trainNewModel():
+  games = importGameData()
+
+  model = train(games)
+
+  saveNN = input("Save trained NN? (y/N)")
+  if saveNN == 'y' or saveNN == 'Y':
+    # serialize model to JSON
+    model_json = model.to_json()
+    with open("model.json", "w") as json_file:
+        json_file.write(model_json)
+    # serialize weights to HDF5
+    model.save_weights("model.h5")
+    print("Saved model to disk")
+
+  return model
+
 def main(player1, player2, board_state):
   # to re-enable user input
   # player1, player2 = sign(player1, player2)
@@ -288,19 +334,28 @@ def main(player1, player2, board_state):
   if b == 1:
     # print("Ok, you are first!")
     # print("Lets get started, here's a new board!")
-    draw(board_state)
-    player1_first(player1, player2, board_state)
+    #draw(board_state)
+    return player1_first(player1, player2, board_state)
   elif b == 0:
-    print("Ok, I'll be the first!")
-    print("So, lets start..")
-    draw(board_state)
-    player2_first(player1, player2, board_state)
+    #print("Ok, I'll be the first!")
+    #print("So, lets start..")
+    #draw(board_state)
+    return player2_first(player1, player2, board_state)
   else:
     pass
 
-games = importGameData()
+saveNN = input("Load previously trained NN? (Y/n)")
+if saveNN != 'n' and saveNN != 'N':
+  model = loadModel()
 
-train(model, games)
+else:
+  model = trainNewModel()
 
-main(player1, player2, board_state)
+results = np.array([0,0,0])
+for i in range(0,3000):
+  board_state = np.array([0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0], dtype=np.float32)
 
+  winner = main(player1, player2, board_state)
+  results[winner + 1] += 1
+
+print("results =", results)

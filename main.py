@@ -366,4 +366,5 @@ for i in range(0,3000):
   winner = main(player1, player2, board_state)
   results[winner + 1] += 1
 
-print("results =", results)
+print("results: [wins, ties, losses]")
+print(results)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import tensorflow as tf
 import numpy as np
 from keras import losses, optimizers
@@ -5,6 +6,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers.advanced_activations import PReLU
 from keras.models import model_from_json
+from pathlib import Path
 import random
 
 np.random.seed(123)
@@ -28,9 +30,9 @@ def train(games):
   print("Sampled ", len(samples), " games of ", len(games))
 
   model = Sequential()
-  model.add(Dense(8, input_dim=9, activation='tanh'))
+  model.add(Dense(8, input_dim=9, activation='sigmoid'))
+  model.add(Dense(9))
   model.add(PReLU(weights=None, alpha_initializer="zero"))
-  model.add(Dense(9, activation='tanh'))
   model.compile(loss = losses.mean_absolute_error, optimizer=optimizers.Nadam())
 
   print("Processing samples...")
@@ -67,7 +69,7 @@ def importGameData():
   games = []
 
   while len(content) > i:
-    outcome = int(content[i])
+    outcome = convertLetterToNumber(content[i])
     line1 = content[i + 1]
     line2 = content[i + 2]
     line3 = content[i + 3]
@@ -192,12 +194,12 @@ def player1_first(player1, player2, board_state):
     board_state[int(p_move)] = player2
     #draw(board_state)
   q = check_for_winner(player1, player2, board_state)
-  if q == 1:
-    congo_player1()
-  elif q == -1:
-    congo_player2()
-  else:
-    print("Its tie man...")
+  # if q == 1:
+  #   congo_player1()
+  # elif q == -1:
+  #   congo_player2()
+  # else:
+  #   print("Its tie man...")
 
   return q
 
@@ -344,8 +346,14 @@ def main(player1, player2, board_state):
   else:
     pass
 
-saveNN = input("Load previously trained NN? (Y/n)")
-if saveNN != 'n' and saveNN != 'N':
+model_exists = Path("model.json").is_file() and Path("model.h5").is_file()
+
+if model_exists:
+  loadNN = input("Load previously trained NN? (Y/n)")
+else:
+  loadNN = 'n'
+
+if loadNN != 'n' and loadNN != 'N':
   model = loadModel()
 
 else:

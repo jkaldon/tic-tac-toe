@@ -13,7 +13,8 @@ Colocations handled automatically by placer.
 2019-03-11 22:56:42.462495: I tensorflow/compiler/xla/service/service.cc:150] XLA service 0x1d75f60 executing computations on platform Host. Devices:
 2019-03-11 22:56:42.462619: I tensorflow/compiler/xla/service/service.cc:158]   StreamExecutor device (0): <undefined>, <undefined>
 Loaded model from disk
-results = [2387  613    0]
+results = [wins, ties, losses]
+[2387  613    0]
 ```
 
 The properly trained Neural Network is named `model-sigmoid-prelu-10x.(json|h5)`.

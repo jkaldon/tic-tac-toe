@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+
+"""
+main.py - Main script for running a Tic-Tac-Toe game between two players or against an AI.
+
+This script imports required modules, initializes game variables, and then starts the main loop
+which repeatedly prompts for user input until they choose to quit the game. Depending on
+their choice, it either runs a new game or quits the program.
+"""
+
 import tensorflow as tf
 import numpy as np
 from keras import losses, optimizers
@@ -137,6 +146,12 @@ def sign(player1, player2):
 
 
 def decide_turn():
+  """
+  decide_turn() - A function to ask the user if they want to go first in the game.
+
+  This function uses a while loop and input() statement to prompt the user with a yes/no
+  question. Based on their response, it returns 1 if they want to go first or 0 otherwise.
+  """
   turn = None
   while turn not in ('y','Y','n','N'):
     turn = input("Do you want to go first? ")
@@ -148,6 +163,14 @@ def decide_turn():
       print("its an invalid choice.")
 
 def draw(a):
+  """
+  draw(a) - A function to display the current state of the game board.
+
+  This function takes an argument 'a' which is a list of 9 elements representing
+  the state of the Tic-Tac-Toe game board. It prints out a formatted version of
+  the game board on the terminal, with Xs for player 1's moves, Os for player 2's
+  moves, and empty spaces for unoccupied squares.
+  """
   #print(chr(27) + "[2J")
   print()
   print("\t ", convertNumberToLetter(a[0]), "|", convertNumberToLetter(a[1]), "|", convertNumberToLetter(a[2]))
@@ -157,6 +180,13 @@ def draw(a):
   print("\t ", convertNumberToLetter(a[6]), "|", convertNumberToLetter(a[7]), "|", convertNumberToLetter(a[8]), "\n")
 
 def convertLetterToNumber(l):
+  """
+  convertLetterToNumber(l) - A function to convert the game piece letters into numbers.
+
+  This function takes a single argument 'l', which can be either 'X', 'O' or any
+  other character. It returns 1.0 if l is equal to 'X', -1.0 if l is equal to 'O',
+  and 0.0 otherwise.
+  """
   if l in ('x','X'):
     return 1.0
   elif l in ("o", "O"):
@@ -173,9 +203,20 @@ def convertNumberToLetter(n):
     return " "
 
 def congo_player1():
+  """
+  congo_player1() - A function to display the win message for player 1.
+
+  This function simply prints out a victory message on the terminal screen
+  """
   print("Player 1 wins!")
 
 def congo_player2():
+  """
+  congo_player2() - A function to display the win message for player 2.
+
+  This function similar to above function, it prints out a victory message on the
+  terminal screen but this time for player 2
+  """
   print("Player 2 wins!")
 
 def player1_first(player1, player2, board_state):
